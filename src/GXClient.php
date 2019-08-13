@@ -274,6 +274,37 @@ class GXClient
     }
 
     /**
+     * Converting encrypted message to memo
+     * @param message
+     * @param nonce
+     * @param memo_from_public
+     * @return memo
+     */
+    function messageToMemo($message, $nonce, $memo_from_public)
+    {
+        $memo_private = $this->private_key;
+
+        // Check PrivateKey isValid
+        if (!Ecc::isValidPrivate($memo_private)) {
+            throw new \Exception("Not a Valid PrivateKey");
+        }
+
+        // The 1s are base58 for all zeros (null)
+        if (preg_match("/111111111111111111111/", $memo_from_public)) {
+            $memo_from_public = null;
+        }
+
+        $memo = Aes::decrypt_with_checksum(
+                    Ecc::wifPrivateToPrivateHex($memo_private),
+                    Utils::checkDecode(substr($memo_from_public, 3), null),
+                    $nonce,
+                    $message
+                );
+
+        return $memo;
+    }
+
+    /**
      * send transfer request to witness node
      * @param to
      * @param memo
@@ -336,8 +367,6 @@ class GXClient
                     if (preg_match("/111111111111111111111/", $memo_to_public)) {
                         $memo_to_public = null;
                     }
-
-                    // $fromPrivate = Ecc::privateToPublic($memo_private);
 
                     if ($memo_from_public != Ecc::privateToPublic($memo_private, 'GXC')) {
                         throw new \Exception("memo signer not exist");
